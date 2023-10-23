@@ -3,6 +3,7 @@
 #include <vector>
 #include <thread>
 #include <semaphore>
+#include <barrier>
 
 
 
@@ -10,14 +11,16 @@ class CoordinatedLoopingThreadpool {
     // Members
     std::vector<std::jthread> workers;               // worker threads
     std::counting_semaphore<> start_sem, finish_sem; // coordination semaphores
+    std::barrier<> start_barrier;                    // make sure each thread runs F once per iteration
     bool synced;                                     // allow trigger() and sync() to be called willy-nilly
 
 public:
     // Constructor; F is a function, args is an iterable
-    CoordinatedLoopingThreadpool(auto F, auto args): start_sem(0), finish_sem(0), synced{true} {
+    CoordinatedLoopingThreadpool(auto F, auto args): start_sem(0), finish_sem(0), start_barrier(std::size(args)), synced{true} {
         for (auto arg: args) {
             workers.emplace_back([this, F, arg](std::stop_token token){
                 while (true) {
+                    start_barrier.arrive_and_wait();
                     start_sem.acquire();
                     if (token.stop_requested()) return;
                     F(arg);
