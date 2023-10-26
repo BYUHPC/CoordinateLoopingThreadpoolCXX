@@ -45,7 +45,7 @@ public:
     // Block until all threads are finished executing for this iteration
     void sync() {
         if (synced) return;
-        for (const auto &w: workers) finish_sem.acquire();
+        for ([[maybe_unused]] const auto &_: workers) finish_sem.acquire();
         synced = true;
     }
 
